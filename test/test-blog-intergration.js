@@ -3,60 +3,59 @@ const chaiHttp = require('chai-http');
 const faker = require('faker');
 const mongoose = require('mongoose');
 
- const should = chai.should();
+const should = chai.should();
+const {DATABASE_URL} = require('../config');
+const {BlogPost} = require('../models');
+const {app, runServer, closeServer} =  require('../server');
+const {TEST_DATABASE_URL} = require('../config');
 
- const {DATABASE_URL} = require('../config');
- const {BlogPost} = require('../models');
- const {app, runServer, closeServer} =  require('../server');
- const {TEST_DATABASE_URL} = require('../config');
+chai.use(chaiHttp);
 
- chai.use(chaiHttp);
+function tearDownDb(){
+   return new Promise ((resolve, reject) => {
+    console.warn('Deleting database');
+    mongoose.connection.dropDatabase()
+ 	 .then(result => resolve(result))
+ 	 .catch(err => reject(err))
+   });	
+}
 
- function tearDownDb(){
-    return new Promise ((reject, resolve)=>{
- 	 console.warn('Deleting database');
- 	 return mongoose.connection.dropDatabase()
- 	  .then(result => resolve(result))
- 	  .catch(err => reject(err))
-    });	
+function seedBlogData(){
+ console.info('seeding blog data');
+ const seedData = [];
+
+ for(let i = 0; i <= 10; i++){
+ 	seedData.push({
+ 		author: {
+ 			firstName: faker.name.firstName(),
+ 			lastName: faker.name.lastName()
+ 		},
+ 		title: faker.lorem.sentence(),
+ 		content: faker.lorem.text()
+ 	});
  }
 
- function seedBlogData(){
- 	console.info('seeding blog data');
- 	const seedData = [];
-
- 	for(let i = 0; i <= 10; i++){
- 		seedData.push({
- 			author: {
- 				firstName: faker.name.firstName(),
- 				lastName: faker.name.lastName()
- 			},
- 			title: faker.lorem.sentence(),
- 			content: faker.lorem.text()
- 		});
- 	}
-
- 	return BlogPost.insertMany(seedData);
- }
+ return BlogPost.insertMany(seedData);
+}
 
 
 
 describe('Blog API resource', function(){
 
 	before(function(){
-		return runServer(TEST_DATABASE_URL)
+		return runServer(TEST_DATABASE_URL);
 	});
 
 	beforeEach(function(){
-		return seedBlogData()
+		return seedBlogData();
 	});
 
 	afterEach(function(){
-		return tearDownDb()
+		return tearDownDb();
 	});
 
 	after(function(){
-		return closeServer()
+		return closeServer();
 	});
 
  describe('GET endpoint', function() {
@@ -129,7 +128,7 @@ describe('Blog API resource', function(){
      	 	res.body.title.should.equal(newPost.title);
 
      	 	res.body.id.should.not.be.null
-     	 	res,body.author.should.equal(`${newPost.author.firstName} ${newPost.author.lastName}`);
+     	 	res.body.author.should.equal(`${newPost.author.firstName} ${newPost.author.lastName}`);
      	 	res.body.content.should.equal(newPost.content);
 
      	 	return BlogPost.findById(res.body.id).exec();
@@ -195,7 +194,7 @@ describe('Blog API resource', function(){
 			return BlogPost
 			 .findOne()
 			 .exec()
-			 .then(res => {
+			 .then(_post => {
 			 	post = _post;
 			 	return chai.request(app).delete(`/posts/${post.id}`)
 			 })
